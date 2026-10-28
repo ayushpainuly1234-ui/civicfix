@@ -1,5 +1,11 @@
 # CivicFix — Civic Issue Reporting & Repair Planner
 
+![CI](https://github.com/ayushpainuly1234-ui/civicfix/actions/workflows/ci.yml/badge.svg) ![Node.js](https://img.shields.io/badge/Node.js-20%2B-43853D?logo=node.js&logoColor=white) ![License](https://img.shields.io/badge/license-not%20specified-lightgrey)
+
+> **Live demo:** Not deployed yet. Deployment is prepared in [`render.yaml`](render.yaml); follow [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) after configuring managed PostgreSQL and MongoDB credentials.
+
+**Quick links:** [Architecture](docs/ARCHITECTURE.md) · [Deployment guide](docs/DEPLOYMENT.md) · [API reference](#main-api-routes) · [Interview notes](#how-to-explain-the-dsa-in-an-interview)
+
 CivicFix is a portfolio-grade full-stack application for reporting local infrastructure issues and planning repair work with limited budget. It is designed around a practical operations problem: *given a set of community-reported issues, a repair budget and some closed roads, which issues should the team prioritise, and how can the team reach those sites?*
 
 > **Demo / scope:** This is a locally runnable portfolio project with seeded fictional demo data. It is not an official city service. Cost estimates and severity scores are example inputs, not government quotes or a validated public-safety scoring system. The planner is a decision aid on a small seeded graph, not a full vehicle-routing solver (single crew, no time windows).
@@ -14,6 +20,14 @@ CivicFix is a portfolio-grade full-stack application for reporting local infrast
 - **Route ordering:** up to 12 stops are ordered *exactly* with Held-Karp bitmask DP over Dijkstra shortest-path distances (open route, no return to depot); beyond 12 it falls back to a nearest-neighbour heuristic and says so in the API response (`routeMethod`).
 - PostgreSQL stores users, crews, graph nodes/edges and planning history. MongoDB stores flexible citizen issue reports.
 - Responsive HTML/CSS/vanilla JavaScript frontend, API validation, authentication rate limiting, security headers and algorithm unit tests.
+
+## Key user flows
+
+1. Create a citizen account and sign in.
+2. Submit an infrastructure report tied to a seeded map location.
+3. Browse reports and filter by status.
+4. Admin reviews status, changes road closures and runs a repair plan.
+5. Planner returns a budget-fitting repair selection plus a route through reachable locations.
 
 ## Technology stack
 
@@ -95,6 +109,12 @@ They cover Dijkstra's shortest path, closed roads, unreachable nodes, DP budget 
 | `POST` | `/api/planning/optimize` | Admin | Run DP selection and route planning |
 | `GET` | `/api/planning/history` | Admin | Recent plans |
 
+## Architecture and deployment
+
+- [Architecture notes](docs/ARCHITECTURE.md) explain component boundaries, request flows, database responsibilities, security boundaries and algorithm trade-offs.
+- [Deployment guide](docs/DEPLOYMENT.md) covers Neon PostgreSQL, MongoDB Atlas, Render Blueprint setup, environment variables and verification steps.
+- GitHub Actions runs `npm ci` and the Node.js test suite on pushes and pull requests. The badge at the top reflects the most recent workflow status.
+
 ## Repository structure
 
 ```text
@@ -107,7 +127,9 @@ civicfix/
 │   ├── services/           # Dijkstra, knapsack DP, route ordering
 │   ├── app.js
 │   └── server.js
-├── tests/                  # Algorithm unit tests
+├── tests/                  # Unit and randomized property tests
+├── docs/                   # Architecture and deployment guides
+├── render.yaml             # Render Blueprint for the Node service
 ├── docker-compose.yml
 ├── .env.example
 └── README.md
