@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CivicFix helps communities report public issues and helps repair teams prioritise work within a budget.">
+  <meta name="theme-color" content="#111b2e">
+  <title>CivicFix — Report it. Route it. Repair it.</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a href="#top" class="brand" aria-label="CivicFix home">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 3 28 9.5v13L16 29 4 22.5v-13L16 3Z" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="m10 16 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span>Civic<span class="brand-light">Fix</span><small>COMMUNITY RESPONSE PLANNER</small></span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="#issues">Issue board</a><a href="#map-section">Road network</a><a href="#how-it-works">How it works</a>
+      </nav>
+      <div class="nav-actions"><span id="user-chip" class="user-chip hidden"></span><button id="auth-open" class="button button-dark">Sign in <span aria-hidden="true">↗</span></button><button id="logout-button" class="button button-quiet hidden">Sign out</button></div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="live-dot"></span> COMMUNITY-POWERED · DATA-INFORMED</p>
+          <h1>Small reports.<br><span>Better streets.</span></h1>
+          <p class="hero-intro">A practical way to report local infrastructure issues and help repair teams make smarter choices with limited time and budget.</p>
+          <div class="hero-actions"><a href="#issues" class="button button-lime">Explore issue board <span aria-hidden="true">↓</span></a><button id="report-cta" class="button button-outline">Report an issue <span aria-hidden="true">＋</span></button></div>
+          <div class="hero-note"><span class="mini-icon">✳</span><span>Built around real constraints: urgency, cost, road closures and reachable repair locations.</span></div>
+        </div>
+        <div class="hero-art" aria-label="Illustration of a city network and repair route">
+          <div class="art-topline"><span>LOCAL NETWORK / ZONE 01</span><span class="status-pill"><span class="live-dot"></span> DEMO DATA</span></div>
+          <svg class="hero-network" viewBox="0 0 470 330" role="img" aria-label="Stylised network of connected streets">
+            <defs><pattern id="dotgrid" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1" fill="#64748b" opacity=".3"/></pattern></defs>
+            <rect width="470" height="330" fill="url(#dotgrid)"/>
+            <g stroke="#64748b" stroke-width="2" opacity=".45" fill="none"><path d="M32 244 100 184 159 210 226 137 297 174 365 107 433 130"/><path d="M58 61 100 184 91 282"/><path d="M159 210 182 75 297 174 313 270"/><path d="M226 137 255 38 365 107 386 231 433 130"/><path d="M91 282 178 300 313 270 386 231"/><path d="M100 184 182 75 255 38"/></g>
+            <path d="M32 244 100 184 159 210 226 137 297 174 365 107 433 130" stroke="#b9f278" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <g fill="#111b2e" stroke="#b9f278" stroke-width="3"><circle cx="32" cy="244" r="7"/><circle cx="100" cy="184" r="7"/><circle cx="159" cy="210" r="7"/><circle cx="226" cy="137" r="7"/><circle cx="297" cy="174" r="7"/><circle cx="365" cy="107" r="7"/><circle cx="433" cy="130" r="7"/></g>
+            <g fill="#f1f5f9" font-size="10" font-weight="700" letter-spacing="1"><text x="20" y="268">DEPOT</text><text x="70" y="166">WEST GATE</text><text x="194" y="119">CENTRAL</text><text x="334" y="85">LIBRARY</text><text x="390" y="151">CLINIC</text></g>
+            <g transform="translate(284 218)"><rect width="130" height="60" rx="8" fill="#f8fafc"/><circle cx="19" cy="19" r="5" fill="#ea6b55"/><text x="31" y="22" fill="#111b2e" font-size="10" font-weight="800">PRIORITY REPAIR</text><text x="14" y="43" fill="#526174" font-size="10">₹18,000 estimated</text></g>
+          </svg>
+          <div class="art-bottom"><span><i class="legend-line"></i> Planned route</span><span><i class="legend-dot"></i> Report location</span><span>Graph + DP planning</span></div>
+        </div>
+      </section>
+
+      <section class="metrics" aria-label="Issue statistics">
+        <article class="metric-card"><span class="metric-label">Tracked reports</span><strong id="metric-total">—</strong><span class="metric-foot">Community-submitted issues</span><span class="metric-icon">▦</span></article>
+        <article class="metric-card"><span class="metric-label">Open issues</span><strong id="metric-open">—</strong><span class="metric-foot">Awaiting repair</span><span class="metric-icon warm">◷</span></article>
+        <article class="metric-card"><span class="metric-label">High urgency</span><strong id="metric-severe">—</strong><span class="metric-foot">Severity 4 or 5</span><span class="metric-icon red">!</span></article>
+        <article class="metric-card"><span class="metric-label">Mapped locations</span><strong id="metric-locations">—</strong><span class="metric-foot">Connected by road segments</span><span class="metric-icon green">⌖</span></article>
+      </section>
+
+      <section id="map-section" class="section-block map-layout">
+        <div class="section-heading"><div><p class="eyebrow">THE STREET NETWORK</p><h2>See the connections.</h2><p class="section-subtitle">Roads are a graph. A closed segment is excluded from route calculations.</p></div><span class="section-number">01 / NETWORK</span></div>
+        <div class="network-card">
+          <div class="map-toolbar"><div><span class="map-status-dot"></span><strong>Central district</strong><span class="map-muted">· Demo street graph</span></div><div class="map-legend"><span><i class="legend-line"></i> Open road</span><span><i class="legend-line legend-closed"></i> Closed road</span><span><i class="legend-line legend-route"></i> Planned route</span></div></div>
+          <div id="network-map" class="network-map"><div class="loading-state">Loading the street network…</div></div>
+          <div class="map-caption"><span>Road lengths shown in kilometres</span><span id="map-hint">Sign in as admin to toggle road closures.</span></div>
+        </div>
+      </section>
+
+      <section id="issues" class="section-block issues-layout">
+        <div class="section-heading"><div><p class="eyebrow">FROM REPORT TO RESPONSE</p><h2>What needs fixing?</h2><p class="section-subtitle">Browse the demo issue board or submit a new report after signing in.</p></div><button id="refresh-button" class="button button-outline">↻ Refresh data</button></div>
+        <div class="filter-row"><div class="filter-tabs" role="group" aria-label="Filter reports"><button class="filter-button active" data-filter="All">All reports</button><button class="filter-button" data-filter="Open">Open</button><button class="filter-button" data-filter="In progress">In progress</button><button class="filter-button" data-filter="Resolved">Resolved</button></div><span id="report-count" class="report-count">Loading issues…</span></div>
+        <div id="report-grid" class="report-grid"><div class="loading-state">Loading reports…</div></div>
+      </section>
+
+      <section id="report-section" class="section-block form-layout hidden">
+        <div class="section-heading"><div><p class="eyebrow">YOUR NEIGHBOURHOOD</p><h2>Report a public issue.</h2><p class="section-subtitle">Share enough detail for a repair team to understand the issue and estimate the work.</p></div><span class="section-number">02 / REPORT</span></div>
+        <form id="report-form" class="panel form-grid">
+          <label class="field field-full">Issue title<input name="title" minlength="5" maxlength="120" placeholder="e.g. Pothole outside the library" required></label>
+          <label class="field">Category<select name="category" required><option>Road damage</option><option>Streetlight</option><option>Waste</option><option>Water leak</option><option>Accessibility</option><option>Other</option></select></label>
+          <label class="field">Location<select name="nodeId" id="report-location" required></select></label>
+          <label class="field">Urgency <span class="field-note">1 = low · 5 = critical</span><select name="severity"><option value="1">1 — Low</option><option value="2">2 — Mild</option><option value="3" selected>3 — Moderate</option><option value="4">4 — High</option><option value="5">5 — Critical</option></select></label>
+          <label class="field">Estimated repair cost (₹)<input name="estimatedCost" type="number" min="1000" max="500000" step="1000" value="10000" required></label>
+          <label class="field">Estimated work hours<input name="estimatedHours" type="number" min="1" max="500" value="4" required></label>
+          <label class="field field-full">What is happening?<textarea name="description" rows="3" minlength="10" maxlength="1000" placeholder="Describe the issue, safety impact and any useful detail…" required></textarea></label>
+          <div class="field-full form-footer"><p class="privacy-note">Do not include personal or sensitive information. Estimates are community inputs, not official quotations.</p><button class="button button-dark" type="submit">Submit report <span>↗</span></button></div>
+        </form>
+      </section>
+
+      <section id="planner" class="section-block planner-layout hidden">
+        <div class="section-heading"><div><p class="eyebrow">DECISION SUPPORT / ADMIN</p><h2>Make the budget count.</h2><p class="section-subtitle">Choose a repair budget. Dynamic programming selects a high-priority set; graph algorithms find road routes for the selected stops.</p></div><span class="section-number">03 / OPTIMISE</span></div>
+        <div class="planner-grid">
+          <form id="planner-form" class="panel planner-controls"><div class="panel-title-row"><div><span class="panel-kicker">REPAIR PLAN</span><h3>Plan a crew run</h3></div><span class="pill pill-lime">0/1 DP</span></div>
+            <label class="field">Starting depot<select name="startNodeId" id="planner-start" required></select></label>
+            <label class="field">Available repair budget (₹)<input name="budget" type="number" min="1000" max="5000000" step="1000" value="50000" required></label>
+            <div class="algorithm-note"><strong>How the planner works</strong><p>Knapsack DP picks the highest total urgency score within budget. Dijkstra finds shortest paths between stops. A nearest-stop heuristic orders those stops; the full tour is not guaranteed globally optimal.</p></div>
+            <button class="button button-lime button-wide" type="submit">Optimise repair plan <span>→</span></button>
+          </form>
+          <div id="plan-result" class="panel plan-result"><div class="empty-plan"><span class="empty-plan-icon">⌁</span><h3>No plan yet</h3><p>Sign in as the demo administrator and run the optimiser to see DP-selected jobs and a route across the street graph.</p></div></div>
+        </div>
+      </section>
+
+      <section id="how-it-works" class="section-block logic-layout">
+        <div class="section-heading"><div><p class="eyebrow">ALGORITHMS WITH A PURPOSE</p><h2>Not just a list of tickets.</h2><p class="section-subtitle">The project uses core CS concepts to solve two different real-world planning problems.</p></div><span class="section-number">04 / ENGINEERING</span></div>
+        <div class="logic-grid"><article class="logic-card"><span class="logic-index">01</span><span class="logic-icon">⌘</span><h3>Shortest-path routing</h3><p>Dijkstra's algorithm with a min-priority queue finds the lowest-distance path while respecting closed roads.</p><div class="logic-meta"><span>GRAPH</span><span>PRIORITY QUEUE</span></div></article><article class="logic-card"><span class="logic-index">02</span><span class="logic-icon">▤</span><h3>Budget-aware selection</h3><p>0/1 knapsack DP maximises combined urgency score without exceeding the repair budget.</p><div class="logic-meta"><span>DYNAMIC PROGRAMMING</span><span>KNAPSACK</span></div></article><article class="logic-card"><span class="logic-index">03</span><span class="logic-icon">◫</span><h3>Two databases, clear roles</h3><p>PostgreSQL stores accounts, crews and the road graph. MongoDB stores flexible citizen reports.</p><div class="logic-meta"><span>SQL</span><span>MONGODB</span></div></article></div>
+      </section>
+
+      <section id="auth-section" class="auth-section hidden" aria-labelledby="auth-title">
+        <div class="auth-panel"><button id="auth-close" class="modal-close" aria-label="Close sign in">×</button><p class="eyebrow">WELCOME TO CIVICFIX</p><h2 id="auth-title">Join the response team.</h2><p class="section-subtitle" id="auth-subtitle">Sign in to submit reports and access planning tools.</p>
+          <div class="auth-tabs"><button type="button" class="auth-tab active" data-auth-mode="login">Sign in</button><button type="button" class="auth-tab" data-auth-mode="register">Create account</button></div>
+          <form id="auth-form" class="auth-form"><label id="name-field" class="field hidden">Your name<input name="name" minlength="2" maxlength="100" autocomplete="name" placeholder="Your name"></label><label class="field">Email<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required></label><label class="field">Password<input name="password" type="password" minlength="10" maxlength="72" autocomplete="current-password" placeholder="At least 10 characters" required></label><button id="auth-submit" type="submit" class="button button-dark button-wide">Sign in <span>↗</span></button><p class="auth-demo">Local demo admin: <code>admin@civicfix.local</code> / <code>CivicFixDemo!2026</code>. Change this before deploying.</p></form>
+        </div>
+      </section>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </main>
+    <footer class="footer"><a href="#top" class="footer-brand">CivicFix<span>.</span></a><p>A portfolio project exploring civic reporting, graph algorithms and constrained optimisation.</p><span>DEMO DATA · NOT AN OFFICIAL CITY SERVICE</span></footer>
+  </div>
+</body>
+</html>
