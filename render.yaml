@@ -5,9 +5,10 @@ services:
     plan: free
     region: ohio
     branch: main
-    buildCommand: npm install && npm run db:seed
+    buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/health
+    initialDeployHook: npm run db:seed
     autoDeployTrigger: commit
     envVars:
       - key: NODE_ENV
