@@ -1,10 +1,10 @@
 # CivicFix — Civic Issue Reporting & Repair Planner
 
-![CI](https://github.com/ayushpainuly1234-ui/civicfix/actions/workflows/ci.yml/badge.svg) ![Node.js](https://img.shields.io/badge/Node.js-20%2B-43853D?logo=node.js&logoColor=white) ![License](https://img.shields.io/badge/license-not%20specified-lightgrey)
+![CI](https://github.com/ayushpainuly1234-ui/civicfix/actions/workflows/ci.yml/badge.svg) ![Node.js](https://img.shields.io/badge/Node.js-20%2B-43853D?logo=node.js&logoColor=white) ![Algorithms](https://img.shields.io/badge/Algorithms-Dijkstra%20%7C%20Knapsack%20DP%20%7C%20Held--Karp-blue)
 
 > **Live demo:** Not deployed yet. Deployment is prepared in [`render.yaml`](render.yaml); follow [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) after configuring managed PostgreSQL and MongoDB credentials.
 
-**Quick links:** [Architecture](docs/ARCHITECTURE.md) · [Deployment guide](docs/DEPLOYMENT.md) · [API reference](#main-api-routes) · [Interview notes](#how-to-explain-the-dsa-in-an-interview)
+**Quick links:** [Architecture](docs/ARCHITECTURE.md) · [Deployment guide](docs/DEPLOYMENT.md) · [Interview guide](docs/INTERVIEW_GUIDE.md) · [API reference](#main-api-routes)
 
 CivicFix is a portfolio-grade full-stack application for reporting local infrastructure issues and planning repair work with limited budget. It is designed around a practical operations problem: *given a set of community-reported issues, a repair budget and some closed roads, which issues should the team prioritise, and how can the team reach those sites?*
 
@@ -113,6 +113,7 @@ They cover Dijkstra's shortest path, closed roads, unreachable nodes, DP budget 
 
 - [Architecture notes](docs/ARCHITECTURE.md) explain component boundaries, request flows, database responsibilities, security boundaries and algorithm trade-offs.
 - [Deployment guide](docs/DEPLOYMENT.md) covers Neon PostgreSQL, MongoDB Atlas, Render Blueprint setup, environment variables and verification steps.
+- [Interview guide](docs/INTERVIEW_GUIDE.md) summarises the project pitch, request flow, algorithm trade-offs, security decisions and questions to practise.
 - GitHub Actions runs `npm ci` and the Node.js test suite on pushes and pull requests. The badge at the top reflects the most recent workflow status.
 
 ## Repository structure
