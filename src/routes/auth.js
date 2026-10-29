@@ -55,7 +55,7 @@ router.post('/login', authLimiter, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
   await auditEvent(req, 'auth.logout');
   res.clearCookie(cookieName, { httpOnly: true, secure: nodeEnv === 'production', sameSite: 'strict', path: '/' });
   res.status(204).end();
