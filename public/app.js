@@ -137,7 +137,7 @@ function renderPlan(plan) {
   const list = selected.length ? `<div class="selected-list">${selected.map((report, index) => `<div class="selected-row"><span class="selected-number">${String(index + 1).padStart(2, '0')}</span><div><strong>${esc(report.title)}</strong><small>${esc(report.locationName || report.nodeId)} · Severity ${report.severity}/5</small></div><span class="selected-cost">${money(report.estimatedCost)}</span></div>`).join('')}</div>` : '<p class="plan-note">No open reports fit within this budget and the current reachable road network.</p>';
   const stopNames = (plan.routeNodes || []).map((node) => node.name).join(' → ');
   $('#plan-result').innerHTML = `<div class="panel-title-row"><div><span class="panel-kicker">PLAN #${plan.planId}</span><h3>Repair run proposed</h3></div><span class="pill pill-lime">DP + DIJKSTRA</span></div>
-    <div class="plan-summary"><div class="plan-stat"><span>Selected cost</span><strong>${money(plan.totalCost)}</strong></div><div class="plan-stat"><span>Budget left</span><strong>${money(plan.budgetRemaining)}</strong></div><div class="plan-stat"><span>Route distance</span><strong>${Number(plan.totalDistanceKm).toFixed(1)} km</strong></div></div>
+    <div class="plan-summary"><div class="plan-stat"><span>Selected cost</span><strong>${money(plan.totalCost)}</strong></div><div class="plan-stat"><span>Budget left</span><strong>${money(plan.budgetRemaining)}</strong></div><div class="plan-stat"><span>Route distance</span><strong>${Number(plan.totalDistanceKm).toFixed(1)} km</strong></div><div class="plan-stat"><span>Crew hours used</span><strong>${Number(plan.totalHours || 0)} / ${Number(plan.maxCrewHours || 0)} h</strong></div></div>
     <div class="panel-kicker">SELECTED REPAIRS (${selected.length})</div>${list}
     <div class="panel-kicker">ROUTE ORDER</div><p class="plan-note">${esc(stopNames || 'No route required')}.</p>
     <p class="plan-note">${esc(plan.note)}${plan.excludedUnreachable ? ` ${plan.excludedUnreachable} unreachable report(s) were excluded before optimisation.` : ''}</p>`;
@@ -249,7 +249,7 @@ $('#network-map').addEventListener('click', async (event) => {
 
 $('#planner-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const payload = Object.fromEntries(new FormData(event.currentTarget).entries()); payload.budget = Number(payload.budget);
+  const payload = Object.fromEntries(new FormData(event.currentTarget).entries()); payload.budget = Number(payload.budget); payload.maxCrewHours = Number(payload.maxCrewHours);
   const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'Optimising…';
   try {
     const result = await api('/api/planning/optimize', { method: 'POST', body: JSON.stringify(payload) });
