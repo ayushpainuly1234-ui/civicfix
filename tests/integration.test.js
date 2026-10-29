@@ -88,6 +88,8 @@ test('CivicFix API end-to-end against PostgreSQL and MongoDB', { skip: !enabled 
       assert.ok(register.cookie);
       citizenCookie = register.cookie;
       userId = register.body.user.id;
+      const audit = await query("SELECT id FROM audit_logs WHERE actor_id=$1 AND event_type='auth.register'", [userId]);
+      assert.equal(audit.rowCount, 1, 'registration should persist an audit event');
 
       const duplicate = await call('/api/auth/register', {
         method: 'POST', body: { name: 'Integration User', email: email.toUpperCase(), password }
