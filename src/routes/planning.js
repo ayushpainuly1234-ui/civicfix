@@ -35,7 +35,7 @@ router.post('/optimize', requireAdmin, async (req, res, next) => {
       'INSERT INTO planning_runs (created_by,start_node_id,budget_limit,total_cost,priority_score,selected_report_ids,route_node_ids,distance_km) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8) RETURNING id,created_at',
       [Number(req.user.sub), startNodeId, budget, optimised.totalCost, optimised.priorityScore, JSON.stringify(selected.map((r) => r._id)), JSON.stringify(plannedRoute.routeNodeIds), plannedRoute.totalDistanceKm]
     );
-    auditEvent(req, 'planning.optimize', { resourceType: 'planning_run', resourceId: saved.rows[0].id });
+    await auditEvent(req, 'planning.optimize', { resourceType: 'planning_run', resourceId: saved.rows[0].id });
     res.json({
       planId: Number(saved.rows[0].id), createdAt: saved.rows[0].created_at,
       budget, totalCost: optimised.totalCost, budgetRemaining: budget - optimised.totalCost,
