@@ -59,7 +59,7 @@ router.post('/', requireAuth, async (req, res, next) => {
     if (!node.rows.length) return res.status(400).json({ error: 'Choose a location from the list.' });
     const report = { title, description, category, nodeId, locationName: node.rows[0].name, severity, estimatedCost, estimatedHours, status: 'Open', createdBy: Number(req.user.sub), createdAt: new Date(), updatedAt: new Date() };
     const result = await getMongoDb().collection('reports').insertOne(report);
-    auditEvent(req, 'report.create', { resourceType: 'report', resourceId: result.insertedId });
+    await auditEvent(req, 'report.create', { resourceType: 'report', resourceId: result.insertedId });
     res.status(201).json({ report: { ...report, _id: String(result.insertedId), node: node.rows[0] } });
   } catch (error) { next(error); }
 });
@@ -71,7 +71,7 @@ router.patch('/:id/status', requireAdmin, async (req, res, next) => {
     if (!['Open', 'In progress', 'Resolved'].includes(status)) return res.status(400).json({ error: 'Invalid status.' });
     const result = await getMongoDb().collection('reports').findOneAndUpdate({ _id: new ObjectId(req.params.id) }, { $set: { status, updatedAt: new Date() } }, { returnDocument: 'after' });
     if (!result) return res.status(404).json({ error: 'Report not found.' });
-    auditEvent(req, 'report.status.update', { resourceType: 'report', resourceId: req.params.id });
+    await auditEvent(req, 'report.status.update', { resourceType: 'report', resourceId: req.params.id });
     res.json({ report: { ...result, _id: String(result._id) } });
   } catch (error) { next(error); }
 });
