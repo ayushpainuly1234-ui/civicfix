@@ -49,3 +49,20 @@ CREATE TABLE IF NOT EXISTS planning_runs (
   distance_km NUMERIC(9, 3) NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id BIGSERIAL PRIMARY KEY,
+  request_id UUID,
+  event_type VARCHAR(80) NOT NULL,
+  actor_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  actor_role VARCHAR(20) NOT NULL DEFAULT 'anonymous',
+  outcome VARCHAR(20) NOT NULL DEFAULT 'success' CHECK (outcome IN ('success', 'failure')),
+  resource_type VARCHAR(80),
+  resource_id VARCHAR(255),
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS audit_logs_created_at_idx ON audit_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS audit_logs_actor_id_idx ON audit_logs (actor_id, created_at DESC);
