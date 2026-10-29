@@ -1,5 +1,5 @@
 const $ = (selector) => document.querySelector(selector);
-const state = { user: null, nodes: [], edges: [], reports: [], plan: null, filter: 'All', authMode: 'login' };
+const state = { user: null, nodes: [], edges: [], reports: [], reportPage: 0, reportLimit: 20, reportTotal: 0, reportsHasMore: false, plan: null, filter: 'All', authMode: 'login' };
 const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(value || 0));
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
@@ -7,7 +7,7 @@ async function api(path, options = {}) {
   const response = await fetch(path, {
     credentials: 'include',
     ...options,
-    headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) }
+    headers: { 'X-CivicFix-Request': '1', ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) }
   });
   if (response.status === 204) return null;
   const body = await response.json().catch(() => ({}));
@@ -55,6 +55,7 @@ function setAuthMode(mode) {
   $('#auth-subtitle').textContent = mode === 'login' ? 'Sign in to submit reports and access planning tools.' : 'Create a citizen account to submit local reports.';
   $('#auth-submit').innerHTML = mode === 'login' ? 'Sign in <span>↗</span>' : 'Create account <span>↗</span>';
   $('#auth-form input[name="password"]').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  $('#auth-form input[name="name"]').required = mode === 'register';
 }
 
 function formatDate(value) {
@@ -73,7 +74,8 @@ function renderMetrics(summary) {
 
 function renderReports() {
   const filtered = state.filter === 'All' ? state.reports : state.reports.filter((report) => report.status === state.filter);
-  $('#report-count').textContent = `${filtered.length} REPORT${filtered.length === 1 ? '' : 'S'} SHOWN`;
+  $('#report-count').textContent = 'SHOWING ' + filtered.length + ' OF ' + state.reportTotal + ' REPORTS';
+  $('#load-more-button').classList.toggle('hidden', !state.reportsHasMore);
   if (!filtered.length) {
     $('#report-grid').innerHTML = '<div class="panel loading-state">No reports match this filter yet.</div>';
     return;
@@ -141,20 +143,31 @@ function renderPlan(plan) {
     <p class="plan-note">${esc(plan.note)}${plan.excludedUnreachable ? ` ${plan.excludedUnreachable} unreachable report(s) were excluded before optimisation.` : ''}</p>`;
 }
 
+async function loadReportsPage(reset = true) {
+  const page = reset ? 1 : state.reportPage + 1;
+  let url = '/api/reports?page=' + page + '&limit=' + state.reportLimit;
+  if (state.filter !== 'All') url += '&status=' + encodeURIComponent(state.filter);
+  const result = await api(url);
+  state.reports = reset ? result.reports : state.reports.concat(result.reports);
+  state.reportPage = result.page;
+  state.reportTotal = result.total;
+  state.reportsHasMore = result.hasMore;
+  renderReports();
+}
+
 async function loadAll() {
   try {
-    const [summary, reports, graph] = await Promise.all([api('/api/dashboard/summary'), api('/api/reports'), api('/api/graph')]);
+    const [summary, graph] = await Promise.all([api('/api/dashboard/summary'), api('/api/graph')]);
     renderMetrics(summary);
-    state.reports = reports.reports;
     state.nodes = graph.nodes;
     state.edges = graph.edges;
     fillNodeSelect($('#report-location'));
     fillNodeSelect($('#planner-start'), 'depot');
-    renderReports();
+    await loadReportsPage(true);
     renderMap();
   } catch (error) {
-    $('#report-grid').innerHTML = `<div class="panel loading-state">Could not load the API: ${esc(error.message)}. Check that CivicFix server and both databases are running.</div>`;
-    $('#network-map').innerHTML = `<div class="loading-state">${esc(error.message)}</div>`;
+    $('#report-grid').innerHTML = '<div class="panel loading-state">Could not load the API: ' + esc(error.message) + '. Check that CivicFix server and both databases are running.</div>';
+    $('#network-map').innerHTML = '<div class="loading-state">' + esc(error.message) + '</div>';
     toast(error.message, true);
   }
 }
@@ -186,8 +199,15 @@ $('#auth-form').addEventListener('submit', async (event) => {
 document.querySelectorAll('[data-filter]').forEach((button) => button.addEventListener('click', () => {
   state.filter = button.dataset.filter;
   document.querySelectorAll('[data-filter]').forEach((item) => item.classList.toggle('active', item === button));
-  renderReports();
+  loadReportsPage(true).catch((error) => toast(error.message, true));
 }));
+$('#load-more-button').addEventListener('click', async () => {
+  const button = $('#load-more-button');
+  button.disabled = true; button.textContent = 'Loading…';
+  try { await loadReportsPage(false); }
+  catch (error) { toast(error.message, true); }
+  finally { button.disabled = false; button.textContent = 'Load more reports'; }
+});
 $('#refresh-button').addEventListener('click', loadAll);
 $('#report-form').addEventListener('submit', async (event) => {
   event.preventDefault();
