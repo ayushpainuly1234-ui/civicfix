@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/ayushpainuly1234-ui/civicfix/actions/workflows/ci.yml/badge.svg) ![Node.js](https://img.shields.io/badge/Node.js-20%2B-43853D?logo=node.js&logoColor=white) ![Algorithms](https://img.shields.io/badge/Algorithms-Dijkstra%20%7C%20Knapsack%20DP%20%7C%20Held--Karp-blue)
 
-> **Live demo:** [Open CivicFix](https://civicfix-7q99.onrender.com) · [API health check](https://civicfix-7q99.onrender.com/api/health). Hosted on Render's free tier, so the first request after inactivity may take around 50 seconds. CivicFix uses fictional seeded demo data and is a portfolio project, not an official city service.
+> **Live demo:** [Open CivicFix](https://civicfix-7q99.onrender.com) · [API health check](https://civicfix-7q99.onrender.com/api/health). This is the canonical Render URL for this repository; older Render slugs may refer to a different/suspended service. The free service can cold-start after inactivity, so use the manual smoke-check workflow before a demo. CivicFix uses fictional seeded data and is a portfolio project, not an official city service.
 
 **Quick links:** [Architecture](docs/ARCHITECTURE.md) · [Deployment guide](docs/DEPLOYMENT.md) · [Interview guide](docs/INTERVIEW_GUIDE.md) · [API reference](#main-api-routes)
 
@@ -96,7 +96,9 @@ npm run db:seed
 npm run test:integration
 ```
 
-GitHub Actions provisions disposable PostgreSQL and MongoDB service containers on every push and pull request, seeds them, and runs both suites. These tests improve regression coverage; they are not a security audit or proof that the hosted service is production-ready.
+GitHub Actions provisions disposable PostgreSQL 16 and MongoDB 7 service containers on every push and pull request, seeds them, and runs both suites. The integration suite includes a bcrypt 72-byte password-boundary regression case and checks that failed logins are audited. These tests improve regression coverage; they are not a security audit or proof that the hosted service is production-ready.
+
+A separate **Live deployment smoke check** workflow is available via **Actions → Live deployment smoke check → Run workflow**. It waits for the configured live service to wake up, then checks the health endpoint, homepage, road graph and a paginated report response. It is an on-demand check, not an uptime guarantee.
 
 ## Main API routes
 
@@ -135,7 +137,8 @@ civicfix/
 │   ├── services/           # Dijkstra, knapsack DP, route ordering
 │   ├── app.js
 │   └── server.js
-├── tests/                  # Unit and randomized property tests
+├── tests/                  # Unit/property and database API integration tests
+├── scripts/                # On-demand live deployment smoke check
 ├── docs/                   # Architecture and deployment guides
 ├── render.yaml             # Render Blueprint for the Node service
 ├── docker-compose.yml
@@ -148,7 +151,7 @@ civicfix/
 - Passwords are stored as bcrypt hashes, never plaintext.
 - JWT is stored in an HttpOnly, SameSite=Strict cookie with a 30-minute expiry. The server checks the current database role and `token_version` on each authenticated request so a role change or version bump invalidates old tokens. There is no refresh-token flow; users sign in again after expiry.
 - State-changing API calls require a same-origin custom header and reject mismatched `Origin` hosts. This is defense in depth for this single-origin app; reassess it if the frontend and API split across origins or authentication changes.
-- This is a learning project, not a security-audited production service. Before public deployment, add HTTPS and managed secret storage, CSRF defence aligned with the deployment topology, account recovery, stronger audit logging, DB backups, admin provisioning workflow, monitoring and end-to-end tests. Review rate limiting for deployment behind a proxy.
+- This remains a learning project, not a security-audited production service. Implemented controls include same-origin mutation checks, rate limiting, short-lived versioned sessions, database-backed role checks, structured PostgreSQL audit events and PostgreSQL/MongoDB API integration tests. Still outstanding before any real civic-data use: independent security review, account recovery/email verification, reliable backups/restore drills, admin provisioning, monitoring, and privacy/moderation/data-retention policies. Review proxy and rate-limit settings for the actual hosting topology.
 - Reports are readable publicly in this demo. Never include private personal data in report text. A real deployment should define moderation, privacy and data-retention policies.
 - The admin demo password is intentionally convenient for local development only.
 - Map coordinates are schematic, not real geospatial coordinates. The project uses a seeded road graph, not a live map provider or real-time traffic feed.
@@ -158,17 +161,18 @@ civicfix/
 
 **Dijkstra:** each graph node is a mapped location and each weighted edge is a road length. A min-priority queue selects the unprocessed location with the lowest known distance; closed roads are omitted from the graph. With a binary heap the usual bound is `O((V + E) log V)`.
 
-**0/1 knapsack DP:** each unresolved, reachable report is an item. Its integer weight is the repair cost rounded up in ₹1,000 units, and its value is the urgency score. The DP table records the best score achievable using the first `i` reports with budget capacity `b`. Each report can be selected at most once. Complexity is `O(n * B)` where `B` is the number of ₹1,000 budget units (capped at 5,000 in the API), with `O(n * B)` memory for straightforward reconstruction.
+**Two-constraint 0/1 knapsack DP:** each unresolved, reachable report is an item with repair-cost weight (rounded up to ₹1,000 units), work-hour weight (rounded up to whole hours), and an illustrative urgency value. Each report can be selected at most once; the selected set respects both the budget capacity `B` (at most 5,000 units) and crew-hour capacity `H` (1–80 hours). Time and reconstruction memory are `O(n * B * H)` in the worst case; the implementation caps candidates and both capacities to keep the demo bounded.
 
 **Held-Karp (route order):** `dp[mask][last]` = shortest distance that visits the set `mask` of stops and ends at `last`. Transitions add one unvisited stop; the answer is the best `dp[full][last]`. Time `O(2^k * k^2)`, memory `O(2^k * k)`, so it is exact but only practical for small `k` (capped at 12 here). Pairwise distances come from `k + 1` Dijkstra runs, not one per pair. Above the cap a nearest-neighbour heuristic is used and reported as such.
 
-**Honest limits:** knapsack picks repairs by urgency only; route distance is reported but not priced into the objective, crew specialty matching is not enforced, and the single-crew hour limit is a simplified input rather than a calendar/scheduling model. The graph is undirected and uses one starting depot.
+**Honest limits:** knapsack picks repairs by urgency only; route distance is reported but not priced into the selection objective; crew specialty matching, multiple crews, shift calendars and time windows are not modelled. The graph is undirected and uses one starting depot. The report itself lives in MongoDB; its audit event is separately persisted in PostgreSQL, so those writes are not a distributed atomic transaction.
 
 ## Roadmap / known gaps
 
-- Add crew-hours as a second knapsack constraint (2-D DP) and match crew specialty to issue category.
-- Sessions expire after 30 minutes; there is no refresh-token flow or account-recovery email delivery.
-- Report listing uses bounded page-based pagination (default 20, max 50 per response); very deep pages may become slower as the dataset grows.
+- Add crew-specialty matching, multiple-crew assignment, shift calendars/time windows, and travel-cost-aware selection.
+- Add account recovery/email verification only after configuring a trusted email provider and one-time token lifecycle; add report images only with managed object storage, strict size/type limits and content validation.
+- Improve cross-store operational reliability with a documented audit-delivery/outbox or reconciliation strategy; the current report + PostgreSQL audit writes are not atomic across MongoDB/PostgreSQL.
+- Sessions expire after 30 minutes and there is no refresh-token flow. Report listing is bounded page-based pagination (default 20, max 50 per response); very deep pages may become slower as the dataset grows.
 
 ## Resume bullet (use only after you run and validate it yourself)
 

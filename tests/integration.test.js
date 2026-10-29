@@ -21,7 +21,8 @@ test('CivicFix API end-to-end against PostgreSQL and MongoDB', { skip: !enabled 
   const address = server.address();
   const base = 'http://127.0.0.1:' + address.port;
   const email = 'integration-' + randomUUID() + '@example.test';
-  const password = 'E2E-' + randomUUID() + '-only!';
+  // Exact 72-byte password makes the bcrypt truncation boundary a meaningful regression case.
+  const password = ('E2E-' + randomUUID() + 'X'.repeat(72)).slice(0, 72);
   let userId = null;
   let reportId = null;
   let citizenCookie = null;
@@ -64,6 +65,10 @@ test('CivicFix API end-to-end against PostgreSQL and MongoDB', { skip: !enabled 
       assert.equal(page2.response.status, 200);
       assert.equal(page2.body.reports.length, 2);
       assert.ok(!page1.body.reports.some((a) => page2.body.reports.some((b) => a._id === b._id)));
+      const badLimit = await call('/api/reports?page=1&limit=0');
+      assert.equal(badLimit.response.status, 400);
+      const badStatus = await call('/api/reports?status=Unknown&page=1&limit=2');
+      assert.equal(badStatus.response.status, 400);
     });
 
     await t.test('unsafe requests require a same-origin header', async () => {
@@ -100,6 +105,18 @@ test('CivicFix API end-to-end against PostgreSQL and MongoDB', { skip: !enabled 
         method: 'POST', body: { email, password: randomUUID() }
       });
       assert.equal(wrongPassword.response.status, 401);
+
+      // bcrypt considers only the first 72 bytes. A suffix must not be accepted as the same password.
+      const overlongPassword = await call('/api/auth/login', {
+        method: 'POST', body: { email, password: password + '-suffix' }
+      });
+      assert.equal(overlongPassword.response.status, 401);
+      assert.equal(overlongPassword.cookie, null);
+
+      const failedAudits = await query(
+        "SELECT COUNT(*)::int AS count FROM audit_logs WHERE event_type='auth.login.failure' AND outcome='failure'"
+      );
+      assert.ok(failedAudits.rows[0].count >= 2, 'failed login attempts should have persisted audit events');
 
       const login = await call('/api/auth/login', {
         method: 'POST', body: { email: email.toUpperCase(), password }

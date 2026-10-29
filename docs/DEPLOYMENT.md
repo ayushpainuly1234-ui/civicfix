@@ -2,6 +2,10 @@
 
 CivicFix is a single-origin Express app: the same Node.js service serves the frontend in `public/` and the REST API. It needs **both PostgreSQL and MongoDB**; deployment will fail until both connection strings are configured.
 
+## Current demo URL
+
+The canonical Render URL for this repository is **[https://civicfix-7q99.onrender.com](https://civicfix-7q99.onrender.com)** and its database-aware health endpoint is **[https://civicfix-7q99.onrender.com/api/health](https://civicfix-7q99.onrender.com/api/health)**. Older `onrender.com` slugs may belong to an old service; use the URL shown on the active service's Render dashboard. The GitHub repository's **About → Website** field should point to this canonical URL after manual smoke verification.
+
 ## 1. Prepare the databases
 
 ### PostgreSQL (Neon)
@@ -20,7 +24,7 @@ CivicFix is a single-origin Express app: the same Node.js service serves the fro
 
 ## 2. Deploy from Render Blueprint
 
-The root `render.yaml` configures a Node web service with health check `/api/health`, generated `JWT_SECRET`, automatic deploys after configured CI checks, and a one-time initial seed hook.
+The root `render.yaml` describes the intended Node web service setup: health check `/api/health`, generated `JWT_SECRET`, deploys after configured CI checks, and a one-time initial seed hook. It uses the Singapore region to match the current service. Existing manually configured Render services may not sync all Blueprint settings automatically; verify their dashboard settings separately.
 
 1. Open the [Render Dashboard](https://dashboard.render.com/).
 2. Choose **New → Blueprint** and connect `ayushpainuly1234-ui/civicfix`.
@@ -40,6 +44,7 @@ The root `render.yaml` configures a Node web service with health check `/api/hea
 | `ADMIN_EMAIL` | The email for the initial admin account |
 | `ADMIN_PASSWORD` | Unique strong password, not the public demo password |
 | `TRUST_PROXY` | `1` for Render's proxy |
+| `PORT` | Supplied by Render automatically; do not hardcode it |
 
 Do not use the local demo admin password in production. The server configuration intentionally refuses to start in production if the admin password is missing or still matches the demo credential. Do not share secrets in chat or commit them to GitHub.
 
@@ -47,12 +52,13 @@ Do not use the local demo admin password in production. The server configuration
 
 After Render reports the deploy as live:
 
-1. Open `https://YOUR-SERVICE.onrender.com/api/health`. It should return a JSON response with `status: "ok"`.
-2. Open the service root URL and confirm the frontend renders.
+1. Open `https://civicfix-7q99.onrender.com/api/health`. It should return a JSON response with `status: "ok"` and `dependencies: "ready"`.
+2. Open [the canonical demo URL](https://civicfix-7q99.onrender.com) and confirm the frontend renders.
 3. Test citizen registration, sign-in, report creation and sign-out. All state-changing API calls must include the same-origin request header; the shipped browser client adds it automatically.
 4. Check that the seed completed successfully. It creates the PostgreSQL schema, road graph, demo crews/admin and fictional example reports.
 5. Test admin-only road closure and repair planning in a separate browser/session.
-6. Set the GitHub repository's **About → Website** field to the final Render URL only after the app has passed the checks above.
+6. Set the GitHub repository's **About → Website** field to `https://civicfix-7q99.onrender.com` only after the app has passed the checks above.
+7. Run **Actions → Live deployment smoke check → Run workflow** to test the live health endpoint, homepage, graph and reports API after a cold start.
 
 ## 5. Troubleshooting
 
@@ -61,6 +67,7 @@ After Render reports the deploy as live:
 - **MongoDB timeout:** check the Atlas database user, password URL-encoding and Network Access rules.
 - **Initial seed hook fails:** review the hook logs, confirm both managed databases are reachable, and run the seed command once from a trusted environment with the same environment variables.
 - **Health check fails:** inspect application logs. The app connects to both databases before listening, so it will not become healthy until both are reachable.
+- **Existing service has stale settings:** in Render Dashboard → the CivicFix service → Settings, set **Health Check Path** to `/api/health`, **Auto-Deploy** to wait for CI checks, and **Start Command** to `npm start` after the existing seed has completed successfully. The current project already has the initial data/schema seeded, as shown by the successful seed log. Avoid using `npm run db:seed && npm start` as the long-term Start Command: the seed routine increments the admin's `token_version` on each run, which invalidates existing admin sessions whenever the service restarts. Keep seeding as an intentional initialization/deployment step, not every process boot. These dashboard fields cannot be changed by editing `render.yaml` alone when the existing service was created manually.
 
 ## Free-plan expectations
 

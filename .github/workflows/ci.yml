@@ -43,6 +43,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: node --check scripts/smoke-test.js
       - run: npm test
       - run: npm run db:seed
       - run: npm run test:integration
