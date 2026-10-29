@@ -45,7 +45,10 @@ router.post('/login', authLimiter, async (req, res, next) => {
     const { rows } = await query('SELECT id,name,email,password_hash,role,token_version FROM users WHERE email=$1', [email]);
     const row = rows[0];
     const passwordOk = await bcrypt.compare(password, row ? row.password_hash : DUMMY_HASH);
-    if (!row || !passwordOk) {
+    // bcrypt truncates input after 72 bytes. Reject overlong values even if their first
+    // 72 bytes match the stored password, otherwise an appended suffix could authenticate.
+    const passwordWithinLimit = Buffer.byteLength(password) <= 72;
+    if (!row || !passwordWithinLimit || !passwordOk) {
       await auditEvent(req, 'auth.login.failure', { outcome: 'failure' });
       return res.status(401).json({ error: 'Email or password is incorrect.' });
     }

@@ -4,7 +4,7 @@ Use this as a preparation sheet, not as a script to memorise. Be ready to explai
 
 ## 60-second project pitch
 
-"CivicFix is a full-stack civic issue reporting and repair-planning prototype. Citizens can register, report issues tied to locations, and follow report status. An admin can manage road closures and ask the planner to select repair jobs under a budget. I used PostgreSQL for users, crews and the road graph, MongoDB for flexible issue reports, Dijkstra for shortest-path routing, 0/1 knapsack DP for budget-constrained repair selection, and Held–Karp bitmask DP to order a small number of stops. The data is fictional and the urgency score is illustrative; I document those trade-offs rather than presenting this as a validated city service."
+"CivicFix is a full-stack civic issue reporting and repair-planning prototype. Citizens can register, submit location-linked issues and track their status. Admins manage road closures and generate repair plans. PostgreSQL stores identity, road-network, planning-history and audit data; MongoDB stores report documents. Dijkstra finds reachable shortest paths, two-constraint 0/1 knapsack DP selects repairs under both budget and one-crew-hour limits, and Held–Karp orders up to 12 stops exactly. I added short versioned sessions, same-origin mutation checks, paginated reports, persistent audit events and PostgreSQL/MongoDB integration tests. The data is fictional and the urgency score is illustrative, so I describe it as a decision-support portfolio prototype, not a validated city service."
 
 ## Explain the request flow
 
@@ -18,7 +18,7 @@ Use this as a preparation sheet, not as a script to memorise. Be ready to explai
 
 - PostgreSQL is a good fit for relational data and integrity constraints: users, crews, nodes, edges and saved planning runs.
 - MongoDB supports report documents whose fields can vary over time, including report metadata and timestamps.
-- Trade-off: a dual-database write is not one atomic transaction. A production extension should define retry/idempotency behaviour, monitoring and reconciliation for partial failures. If the schema and team do not need document flexibility, one relational database could be simpler.
+- Report content is authoritative in MongoDB; PostgreSQL is checked for the selected graph node and a separate PostgreSQL audit event is written after the report insert. There is no atomic distributed transaction across MongoDB and PostgreSQL; the audit service logs persistence failures but does not roll back the report. A production extension that requires guaranteed audit delivery should add an outbox/reconciliation approach. If the schema and team do not need document flexibility, one relational database could be simpler.
 
 ## DSA and complexity
 
@@ -32,11 +32,11 @@ Use this as a preparation sheet, not as a script to memorise. Be ready to explai
 
 ### 0/1 knapsack DP
 
-- **Why:** each repair is either selected or not selected and total estimated repair cost cannot exceed the budget.
-- **Weight:** repair cost rounded up to ₹1,000 units.
+- **Why:** each repair is either selected or not selected, and both budget and one crew's working-hour capacity must be respected.
+- **Weights:** repair cost rounded up to ₹1,000 units and estimated repair hours rounded up to whole hours.
 - **Value:** illustrative urgency score based on severity and bounded age.
-- **Time:** `O(nB)` where `B` is the capped budget capacity in ₹1,000 units.
-- **Memory:** current reconstruction implementation stores DP state for item/capacity combinations, so it uses `O(nB)` memory.
+- **Time:** `O(nBH)`, where `B` is the capped budget capacity in ₹1,000 units (at most 5,000) and `H` is the configured crew-hour capacity (1–80).
+- **Memory:** score rows are rolled, while reconstruction decisions are retained per item/cost/hour state, so worst-case memory is `O(nBH)`.
 - **Discuss:** rounding up prevents overspending, and the score weights are policy assumptions that should be calibrated rather than treated as objective truth.
 
 ### Held–Karp bitmask DP for route order
@@ -51,10 +51,11 @@ Use this as a preparation sheet, not as a script to memorise. Be ready to explai
 
 - Passwords are bcrypt hashes; never store or log plaintext passwords.
 - The session JWT is in an HttpOnly cookie, not browser localStorage.
-- Auth endpoints are rate-limited and cookie settings include SameSite.
-- User registration cannot request an admin role; admin APIs use a separate role guard.
-- Secrets belong in environment variables/hosting secret storage, not in the repository.
-- This prototype still needs additional production security work (CSRF threat-model review, account recovery, stronger audit logs, database backups, privacy/moderation policy and end-to-end tests).
+- Auth endpoints are rate-limited and cookie settings include SameSite; the login path rejects passwords over bcrypt's 72-byte input limit.
+- Sessions expire after 30 minutes; protected requests check current role and `token_version` against PostgreSQL. Citizen registration cannot request an admin role.
+- State-changing API requests require a same-origin custom header and reject mismatched Origins.
+- Structured auth/report/road/planner audit events are persisted in PostgreSQL, with login failures logged without email/password data.
+- CI runs algorithm/property tests and API integration tests against disposable PostgreSQL and MongoDB service containers; that is regression coverage, not a security audit.
 
 ## Questions to practise
 
@@ -64,7 +65,7 @@ Use this as a preparation sheet, not as a script to memorise. Be ready to explai
 4. Why round cost up instead of to the nearest ₹1,000?
 5. What happens if a report's location is disconnected from the depot?
 6. Why is Held–Karp limited to 12 stops? What does the fallback lose?
-7. What can go wrong when one request writes to MongoDB while checking a PostgreSQL node?
+7. What consistency guarantee exists between MongoDB report writes and PostgreSQL audit events, and what would an outbox/reconciliation flow improve?
 8. How do you stop a citizen from changing a report to Resolved or closing roads?
 9. Which tests compare an algorithm against a slower reference implementation?
 10. What would you change before using real city data?
@@ -73,6 +74,6 @@ Use this as a preparation sheet, not as a script to memorise. Be ready to explai
 
 - The demo graph and reports are fictional; the map is schematic.
 - The urgency weights are an example policy, not a validated safety metric.
-- The planner currently does not optimise crew hours, skills, travel cost and time windows together.
-- Unit/property tests are present, but database-backed end-to-end tests and a production security audit are still missing.
+- The planner respects repair budget and a single crew-hour limit, but does not optimise travel cost, assign specialty-matched crews, or model shifts/time windows.
+- Database-backed API integration tests are present in CI. A production security audit, email-based account recovery, reliable backups, file upload/storage and moderation/privacy controls are still outstanding.
 - Add a public demo URL to the repository only after deploying and manually verifying login, reports, admin controls and planner behaviour.

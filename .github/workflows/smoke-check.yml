@@ -1,0 +1,27 @@
+name: Live deployment smoke check
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Public CivicFix service URL (no path/query)
+        required: true
+        default: https://civicfix-7q99.onrender.com
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check the public deployment
+        run: node scripts/smoke-test.js
+        env:
+          CIVICFIX_BASE_URL: ${{ inputs.base_url }}

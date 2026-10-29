@@ -13,11 +13,13 @@ flowchart TD
   Browser[Browser: HTML / CSS / JavaScript] -->|same-origin HTTP + HttpOnly cookie| Express[Node.js + Express API]
   Express --> Auth[Auth middleware: JWT verify + role checks]
   Express --> Reports[Reports routes]
+  Express --> Audit[Structured audit service]
   Express --> Graph[Road graph routes]
   Express --> Planner[Repair planner]
   Auth --> PG[(PostgreSQL)]
   Reports --> Mongo[(MongoDB)]
   Reports --> PG
+  Audit --> PG
   Graph --> PG
   Planner --> PG
   Planner --> Mongo
@@ -42,7 +44,7 @@ flowchart TD
 
 ## Data ownership
 
-- **PostgreSQL:** users and password hashes, crews, graph nodes, graph edges, and saved planning history.
+- **PostgreSQL:** users and password hashes, crews, graph nodes/edges, saved planning history, and structured audit events.
 - **MongoDB:** variable-shaped civic issue reports and their status/history fields.
 - **Browser:** transient UI state. Session identity is held in an HttpOnly cookie, not localStorage.
 
@@ -60,8 +62,11 @@ flowchart TD
 
 1. Signed-in citizen submits title, description, category, location node, severity and estimated cost/time.
 2. API validates fields and confirms the location node exists in PostgreSQL.
-3. Report document is inserted into MongoDB.
-4. The UI refreshes the issue board from the API.
+3. The report document is inserted into MongoDB, the source of truth for report content/status.
+4. A structured audit event is separately written to PostgreSQL without report text, email, or password fields.
+5. The UI refreshes the issue board from the API.
+
+The report insert and PostgreSQL audit insert are not a distributed transaction. Audit persistence failures are logged and do not undo the already-committed report. A production service needing guaranteed audit delivery should add an outbox/reconciliation design rather than claim cross-store atomicity.
 
 ### Repair planning
 
@@ -77,24 +82,30 @@ flowchart TD
 - **Dijkstra:** with a binary heap, typically `O((V + E) log V)`; appropriate because all road lengths are non-negative.
 - **0/1 knapsack:** `O(nB)` time, where `B` is the budget in ₹1,000 units (capped by the API). Repair costs are rounded up to avoid exceeding the budget.
 - **Held–Karp:** `O(2^k k^2)` time and `O(2^k k)` memory. It is exact for small `k), so the app caps exact ordering at 12 stops and discloses the heuristic fallback.
-- **Current simplification:** urgency is based on severity plus a bounded age bonus. The current DP does not include crew work-hours, crew-specialty constraints, travel cost or time windows.
+- **Current simplification:** urgency is based on severity plus a bounded age bonus. The DP constrains both estimated repair cost and one crew's available work hours. It does not optimise travel cost in the selection objective or enforce crew-specialty constraints, multiple-crew schedules or time windows.
 
 ## Security boundaries
 
 - Passwords are stored as bcrypt hashes, not plaintext.
 - Signed session JWT is in an HttpOnly cookie, inaccessible to ordinary browser JavaScript.
-- Authentication routes are rate limited and Helmet adds security headers.
+- Authentication routes are rate limited and Helmet adds security headers; bcrypt inputs are bounded to avoid accepting passwords through bcrypt's 72-byte truncation behaviour.
+- Sessions expire after 30 minutes. Each authenticated request reloads the user's current role and token version from PostgreSQL, enabling immediate revocation after role/version changes.
+- State-changing requests require a same-origin custom header and reject mismatched Origin hosts. Structured audit events are written to PostgreSQL; persistence failures are logged but do not roll back business data.
 - Regular sign-up can only create a citizen account; admin-only endpoints have a separate role guard.
-- Environment secrets must never be committed. Production must use fresh values for `JWT_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD`, plus restricted database credentials.
-- This project is a learning prototype, not security-audited production software. Add CSRF defence aligned with the hosting topology, recovery flows, audit logging, moderation/privacy policy and database backups before real public use.
+- Environment secrets must never be committed. Production must use fresh values for `JWT_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD`, plus least-privilege database credentials.
+- This project is a learning prototype, not security-audited production software. Account recovery/email verification, independent review, moderation/privacy policy, backups/restore drills and monitoring remain outstanding before real public use.
 
 ## Verification
 
-Pure algorithm tests use Node's built-in test runner and include reproducible randomized comparisons against slower reference algorithms. API/database end-to-end tests are not yet included.
+The Node test runner has two suites: algorithm/property tests that compare Dijkstra, knapsack and route ordering against reference implementations, plus an API integration suite that starts Express against disposable PostgreSQL and MongoDB databases. Integration coverage includes auth/session rules, overlong-password rejection, audit persistence, pagination, report persistence, role guards, road changes and planning/history. GitHub Actions runs both suites with PostgreSQL 16 and MongoDB 7 service containers.
 
-Run:
+Run with both databases and test environment variables configured:
 
 ```bash
 npm ci
+npm run db:seed
 npm test
+npm run test:integration
 ```
+
+An on-demand live smoke workflow separately checks the deployed HTTP endpoints. Passing CI is not equivalent to verifying the public Render URL or completing a security audit.
