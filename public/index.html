@@ -66,6 +66,7 @@
         <div class="section-heading"><div><p class="eyebrow">FROM REPORT TO RESPONSE</p><h2>What needs fixing?</h2><p class="section-subtitle">Browse the demo issue board or submit a new report after signing in.</p></div><button id="refresh-button" class="button button-outline">↻ Refresh data</button></div>
         <div class="filter-row"><div class="filter-tabs" role="group" aria-label="Filter reports"><button class="filter-button active" data-filter="All">All reports</button><button class="filter-button" data-filter="Open">Open</button><button class="filter-button" data-filter="In progress">In progress</button><button class="filter-button" data-filter="Resolved">Resolved</button></div><span id="report-count" class="report-count">Loading issues…</span></div>
         <div id="report-grid" class="report-grid"><div class="loading-state">Loading reports…</div></div>
+      <div class="load-more-row"><button id="load-more-button" class="button button-outline hidden" type="button">Load more reports</button></div>
       </section>
 
       <section id="report-section" class="section-block form-layout hidden">
@@ -88,10 +89,10 @@
           <form id="planner-form" class="panel planner-controls"><div class="panel-title-row"><div><span class="panel-kicker">REPAIR PLAN</span><h3>Plan a crew run</h3></div><span class="pill pill-lime">0/1 DP</span></div>
             <label class="field">Starting depot<select name="startNodeId" id="planner-start" required></select></label>
             <label class="field">Available repair budget (₹)<input name="budget" type="number" min="1000" max="5000000" step="1000" value="50000" required></label>
-            <div class="algorithm-note"><strong>How the planner works</strong><p>Knapsack DP picks the highest total urgency score within budget. Dijkstra finds shortest paths between stops. A nearest-stop heuristic orders those stops; the full tour is not guaranteed globally optimal.</p></div>
+            <div class="algorithm-note"><strong>How the planner works</strong><p>0/1 knapsack DP selects high-urgency repairs within the budget. Dijkstra supplies shortest-path distances. Up to 12 stops are ordered exactly with Held–Karp DP; larger plans use a nearest-neighbour heuristic and may not be globally optimal.</p></div>
             <button class="button button-lime button-wide" type="submit">Optimise repair plan <span>→</span></button>
           </form>
-          <div id="plan-result" class="panel plan-result"><div class="empty-plan"><span class="empty-plan-icon">⌁</span><h3>No plan yet</h3><p>Sign in as the demo administrator and run the optimiser to see DP-selected jobs and a route across the street graph.</p></div></div>
+          <div id="plan-result" class="panel plan-result"><div class="empty-plan"><span class="empty-plan-icon">⌁</span><h3>No plan yet</h3><p>Admin planning is restricted to the configured administrator account. Create a citizen account to try report submission.</p></div></div>
         </div>
       </section>
 
@@ -103,7 +104,7 @@
       <section id="auth-section" class="auth-section hidden" aria-labelledby="auth-title">
         <div class="auth-panel"><button id="auth-close" class="modal-close" aria-label="Close sign in">×</button><p class="eyebrow">WELCOME TO CIVICFIX</p><h2 id="auth-title">Join the response team.</h2><p class="section-subtitle" id="auth-subtitle">Sign in to submit reports and access planning tools.</p>
           <div class="auth-tabs"><button type="button" class="auth-tab active" data-auth-mode="login">Sign in</button><button type="button" class="auth-tab" data-auth-mode="register">Create account</button></div>
-          <form id="auth-form" class="auth-form"><label id="name-field" class="field hidden">Your name<input name="name" minlength="2" maxlength="100" autocomplete="name" placeholder="Your name"></label><label class="field">Email<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required></label><label class="field">Password<input name="password" type="password" minlength="10" maxlength="72" autocomplete="current-password" placeholder="At least 10 characters" required></label><button id="auth-submit" type="submit" class="button button-dark button-wide">Sign in <span>↗</span></button><p class="auth-demo">Local demo admin: <code>admin@civicfix.local</code> / <code>CivicFixDemo!2026</code>. Change this before deploying.</p></form>
+          <form id="auth-form" class="auth-form"><label id="name-field" class="field hidden">Your name<input name="name" minlength="2" maxlength="100" autocomplete="name" placeholder="Your name"></label><label class="field">Email<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required></label><label class="field">Password<input name="password" type="password" minlength="10" maxlength="72" autocomplete="current-password" placeholder="At least 10 characters" required></label><button id="auth-submit" type="submit" class="button button-dark button-wide">Sign in <span>↗</span></button><p class="auth-demo">Administrator access is configured privately by the project owner. Create a citizen account to try reporting.</p></form>
         </div>
       </section>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
