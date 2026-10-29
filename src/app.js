@@ -6,6 +6,8 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const { nodeEnv, trustProxy } = require('./config');
 const { optionalAuth } = require('./middleware/auth');
+const { query } = require('./db/postgres');
+const { getMongoDb } = require('./db/mongo');
 const authRoutes = require('./routes/auth');
 const reportsRoutes = require('./routes/reports');
 const dashboardRoutes = require('./routes/dashboard');
@@ -45,7 +47,15 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/graph', graphRoutes);
 app.use('/api/crews', crewsRoutes);
 app.use('/api/planning', planningRoutes);
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'civicfix-api' }));
+app.get('/api/health', async (_req, res) => {
+  try {
+    await query('SELECT 1');
+    await getMongoDb().command({ ping: 1 });
+    res.json({ status: 'ok', service: 'civicfix-api', dependencies: 'ready' });
+  } catch {
+    res.status(503).json({ status: 'error', service: 'civicfix-api', dependencies: 'unavailable' });
+  }
+});
 app.use('/api', (_req, res) => res.status(404).json({ error: 'API route not found.' }));
 app.use(express.static(path.join(__dirname, '..', 'public'), { etag: true, maxAge: nodeEnv === 'production' ? 0 : '1h' }));
 app.get('*', (_req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
