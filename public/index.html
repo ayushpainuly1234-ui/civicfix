@@ -89,7 +89,8 @@
           <form id="planner-form" class="panel planner-controls"><div class="panel-title-row"><div><span class="panel-kicker">REPAIR PLAN</span><h3>Plan a crew run</h3></div><span class="pill pill-lime">0/1 DP</span></div>
             <label class="field">Starting depot<select name="startNodeId" id="planner-start" required></select></label>
             <label class="field">Available repair budget (₹)<input name="budget" type="number" min="1000" max="5000000" step="1000" value="50000" required></label>
-            <div class="algorithm-note"><strong>How the planner works</strong><p>0/1 knapsack DP selects high-urgency repairs within the budget. Dijkstra supplies shortest-path distances. Up to 12 stops are ordered exactly with Held–Karp DP; larger plans use a nearest-neighbour heuristic and may not be globally optimal.</p></div>
+            <label class="field">Crew working-hour limit<input name="maxCrewHours" type="number" min="1" max="80" step="1" value="40" required></label>
+            <div class="algorithm-note"><strong>How the planner works</strong><p>Two-constraint 0/1 knapsack DP selects high-urgency repairs within both the budget and crew-hour limit. Dijkstra supplies shortest-path distances. Up to 12 stops are ordered exactly with Held–Karp DP; larger plans use a nearest-neighbour heuristic and may not be globally optimal.</p></div>
             <button class="button button-lime button-wide" type="submit">Optimise repair plan <span>→</span></button>
           </form>
           <div id="plan-result" class="panel plan-result"><div class="empty-plan"><span class="empty-plan-icon">⌁</span><h3>No plan yet</h3><p>Admin planning is restricted to the configured administrator account. Create a citizen account to try report submission.</p></div></div>
