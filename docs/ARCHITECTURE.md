@@ -80,7 +80,7 @@ The report insert and PostgreSQL audit insert are not a distributed transaction.
 ## Algorithm trade-offs
 
 - **Dijkstra:** with a binary heap, typically `O((V + E) log V)`; appropriate because all road lengths are non-negative.
-- **0/1 knapsack:** `O(nB)` time, where `B` is the budget in ₹1,000 units (capped by the API). Repair costs are rounded up to avoid exceeding the budget.
+- **Two-constraint 0/1 knapsack:** `O(nBH)` time, where `B` is the budget in ₹1,000 units (capped at 5,000) and `H` is crew-hour capacity (1–80). Reconstruction decisions also use `O(nBH)` memory. Repair costs are rounded up to avoid exceeding the budget.
 - **Held–Karp:** `O(2^k k^2)` time and `O(2^k k)` memory. It is exact for small `k), so the app caps exact ordering at 12 stops and discloses the heuristic fallback.
 - **Current simplification:** urgency is based on severity plus a bounded age bonus. The DP constrains both estimated repair cost and one crew's available work hours. It does not optimise travel cost in the selection objective or enforce crew-specialty constraints, multiple-crew schedules or time windows.
 
