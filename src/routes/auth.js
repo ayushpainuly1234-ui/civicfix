@@ -30,7 +30,7 @@ router.post('/register', authLimiter, async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, 12);
     const { rows } = await query('INSERT INTO users (name,email,password_hash,role) VALUES ($1,$2,$3,$4) RETURNING id,name,email,role,token_version', [name, email, passwordHash, 'citizen']);
     setSession(res, rows[0]);
-    auditEvent(req, 'auth.register', { actorId: rows[0].id, actorRole: rows[0].role });
+    await auditEvent(req, 'auth.register', { actorId: rows[0].id, actorRole: rows[0].role });
     res.status(201).json({ user: publicUser(rows[0]) });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ error: 'An account with that email already exists.' });
@@ -46,17 +46,17 @@ router.post('/login', authLimiter, async (req, res, next) => {
     const row = rows[0];
     const passwordOk = await bcrypt.compare(password, row ? row.password_hash : DUMMY_HASH);
     if (!row || !passwordOk) {
-      auditEvent(req, 'auth.login.failure', { outcome: 'failure' });
+      await auditEvent(req, 'auth.login.failure', { outcome: 'failure' });
       return res.status(401).json({ error: 'Email or password is incorrect.' });
     }
     setSession(res, row);
-    auditEvent(req, 'auth.login.success', { actorId: row.id, actorRole: row.role });
+    await auditEvent(req, 'auth.login.success', { actorId: row.id, actorRole: row.role });
     res.json({ user: publicUser(row) });
   } catch (error) { next(error); }
 });
 
 router.post('/logout', (req, res) => {
-  auditEvent(req, 'auth.logout');
+  await auditEvent(req, 'auth.logout');
   res.clearCookie(cookieName, { httpOnly: true, secure: nodeEnv === 'production', sameSite: 'strict', path: '/' });
   res.status(204).end();
 });
