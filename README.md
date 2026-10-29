@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/ayushpainuly1234-ui/civicfix/actions/workflows/ci.yml/badge.svg) ![Node.js](https://img.shields.io/badge/Node.js-20%2B-43853D?logo=node.js&logoColor=white) ![Algorithms](https://img.shields.io/badge/Algorithms-Dijkstra%20%7C%20Knapsack%20DP%20%7C%20Held--Karp-blue)
 
-> **Live demo:** Not deployed yet. Deployment is prepared in [`render.yaml`](render.yaml); follow [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) after configuring managed PostgreSQL and MongoDB credentials.
+> **Live demo:** [Open CivicFix](https://civicfix-7q99.onrender.com) · [API health check](https://civicfix-7q99.onrender.com/api/health). Hosted on Render's free tier, so the first request after inactivity may take around 50 seconds. CivicFix uses fictional seeded demo data and is a portfolio project, not an official city service.
 
 **Quick links:** [Architecture](docs/ARCHITECTURE.md) · [Deployment guide](docs/DEPLOYMENT.md) · [Interview guide](docs/INTERVIEW_GUIDE.md) · [API reference](#main-api-routes)
 
