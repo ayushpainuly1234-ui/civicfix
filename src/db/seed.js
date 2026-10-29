@@ -54,7 +54,7 @@ async function seed() {
     ['Road Repair Crew','Road surfaces','depot'],['Electrical Crew','Streetlights','north-junction'],['Water Services Crew','Water infrastructure','clinic'],['Accessibility Crew','Sidewalks and ramps','west-gate']
   ];
   for (const [name,specialty,base] of crewRows) {
-    await query(`INSERT INTO crews (name,specialty,base_node_id,active) SELECT $1,$2,$3,TRUE WHERE NOT EXISTS (SELECT 1 FROM crews WHERE name=$1)`, [name,specialty,base]);
+    await query(`INSERT INTO crews (name,specialty,base_node_id,active) SELECT $1::varchar(120),$2::varchar(100),$3::varchar(60),TRUE WHERE NOT EXISTS (SELECT 1 FROM crews WHERE name=$1::varchar(120))`, [name,specialty,base]);
   }
   const collection = getMongoDb().collection('reports');
   if (await collection.countDocuments() === 0) {
