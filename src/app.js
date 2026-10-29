@@ -1,4 +1,5 @@
 const path = require('node:path');
+const { randomUUID } = require('node:crypto');
 const express = require('express');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
@@ -19,6 +20,23 @@ if (trustProxy) app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustPr
 app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], styleSrc: ["'self'", "https://fonts.googleapis.com"], fontSrc: ["'self'", "https://fonts.gstatic.com"], scriptSrc: ["'self'"], imgSrc: ["'self'", 'data:'], connectSrc: ["'self'"], upgradeInsecureRequests: nodeEnv === 'production' ? [] : null } } }));
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
+app.use((req, _res, next) => { req.requestId = randomUUID(); next(); });
+app.use('/api', (req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+  const origin = req.get('origin');
+  if (origin) {
+    let parsedOrigin;
+    try { parsedOrigin = new URL(origin); }
+    catch { return res.status(403).json({ error: 'Invalid request origin.' }); }
+    if (parsedOrigin.host !== req.get('host')) {
+      return res.status(403).json({ error: 'Cross-origin state changes are not allowed.' });
+    }
+  }
+  if (req.get('x-civicfix-request') !== '1') {
+    return res.status(403).json({ error: 'Missing same-origin request header.' });
+  }
+  next();
+});
 app.use(optionalAuth);
 app.use('/api', rateLimit({ windowMs: 60 * 1000, limit: 180, standardHeaders: 'draft-7', legacyHeaders: false }));
 app.use('/api/auth', authRoutes);

@@ -49,7 +49,7 @@ async function seed() {
     await query(`INSERT INTO graph_edges (source_node_id,target_node_id,distance_km,is_closed) VALUES ($1,$2,$3,FALSE) ON CONFLICT (source_node_id,target_node_id) DO UPDATE SET distance_km=EXCLUDED.distance_km`, [a,b,distance]);
   }
   const adminHash = await bcrypt.hash(adminPassword, 12);
-  await query(`INSERT INTO users (name,email,password_hash,role) VALUES ($1,$2,$3,'admin') ON CONFLICT (email) DO UPDATE SET name=EXCLUDED.name,password_hash=EXCLUDED.password_hash,role='admin'`, ['CivicFix Local Admin',adminEmail,adminHash]);
+  await query(`INSERT INTO users (name,email,password_hash,role) VALUES ($1,$2,$3,'admin') ON CONFLICT (email) DO UPDATE SET name=EXCLUDED.name,password_hash=EXCLUDED.password_hash,role='admin',token_version=users.token_version+1`, ['CivicFix Local Admin',adminEmail,adminHash]);
   const crewRows = [
     ['Road Repair Crew','Road surfaces','depot'],['Electrical Crew','Streetlights','north-junction'],['Water Services Crew','Water infrastructure','clinic'],['Accessibility Crew','Sidewalks and ramps','west-gate']
   ];
@@ -63,8 +63,8 @@ async function seed() {
       await collection.insertOne({ ...report, locationName: nodeName, status:'Open', createdBy:null, createdAt:new Date(Date.now() - Math.floor(Math.random()*20)*86_400_000), updatedAt:new Date() });
     }
   }
-  console.log(`Seed complete. Local admin: ${adminEmail}`);
-  console.log('Demo credentials are for local development only. Change/remove them before any deployment.');
+  console.log('Seed complete. Configured administrator account updated.');
+  if (process.env.NODE_ENV !== 'production') console.warn('Convenience admin credentials are for local development only.');
 }
 
 seed().catch((error) => { console.error('Seed failed:', error); process.exitCode = 1; }).finally(async () => { await Promise.allSettled([closeMongo(), closePostgres()]); });

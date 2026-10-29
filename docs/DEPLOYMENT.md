@@ -49,8 +49,8 @@ After Render reports the deploy as live:
 
 1. Open `https://YOUR-SERVICE.onrender.com/api/health`. It should return a JSON response with `status: "ok"`.
 2. Open the service root URL and confirm the frontend renders.
-3. Test citizen registration, sign-in, report creation and sign-out.
-4. Check that the first-deploy hook completed successfully. It creates the PostgreSQL schema, road graph, demo crews/admin and fictional example reports.
+3. Test citizen registration, sign-in, report creation and sign-out. All state-changing API calls must include the same-origin request header; the shipped browser client adds it automatically.
+4. Check that the seed completed successfully. It creates the PostgreSQL schema, road graph, demo crews/admin and fictional example reports.
 5. Test admin-only road closure and repair planning in a separate browser/session.
 6. Set the GitHub repository's **About → Website** field to the final Render URL only after the app has passed the checks above.
 
@@ -65,3 +65,8 @@ After Render reports the deploy as live:
 ## Free-plan expectations
 
 Free hosting is useful for a portfolio demo but not production reliability. Services may sleep when idle and have monthly quotas. Database-provider free tiers may have their own limits, expiry, storage caps or connection limits; review each provider's current terms before relying on the demo. Never store real public-service reports or sensitive personal data in this learning deployment.
+
+
+## Continuous integration
+
+GitHub Actions runs the algorithm/property suite and a separate API integration suite against disposable PostgreSQL 16 and MongoDB 7 service containers. The integration run seeds a throwaway database, starts Express on an ephemeral port, and checks auth/session, CSRF, pagination, report persistence, role guards, road updates, planner output and history. CI credentials and database services are disposable test values only; never copy them to Render.

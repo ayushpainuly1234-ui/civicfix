@@ -5,6 +5,37 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: civicfix
+          POSTGRES_PASSWORD: civicfix_test_password
+          POSTGRES_DB: civicfix
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U civicfix -d civicfix"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "echo 'db.adminCommand({ ping: 1 }).ok' | mongosh localhost:27017/test --quiet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://civicfix:civicfix_test_password@127.0.0.1:5432/civicfix
+      MONGO_URI: mongodb://127.0.0.1:27017/civicfix_test?directConnection=true
+      MONGO_DB: civicfix_test
+      JWT_SECRET: ci-test-secret-${{ github.run_id }}-only-civicfix
+      ADMIN_EMAIL: ci-admin@civicfix.local
+      ADMIN_PASSWORD: ${{ format('ci-only-admin-{0}-{1}', github.run_id, github.run_attempt) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -13,3 +44,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run db:seed
+      - run: npm run test:integration
+        env:
+          RUN_DB_INTEGRATION: '1'

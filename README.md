@@ -16,10 +16,10 @@ CivicFix is a portfolio-grade full-stack application for reporting local infrast
 - Report roads, streetlights, waste, water leaks and accessibility issues with location, severity, repair cost and work-hour estimates.
 - Admin dashboard to update report statuses and mark road segments as open or closed.
 - **Graph / Dijkstra:** models the road network as an adjacency list and uses a binary min-heap priority queue to find shortest paths while skipping closed roads.
-- **Dynamic programming / 0/1 knapsack:** chooses a set of reachable repair issues with the highest urgency score without exceeding a repair budget. Cost is rounded up to ₹1,000 units to bound the DP array size.
-- **Route ordering:** up to 12 stops are ordered *exactly* with Held-Karp bitmask DP over Dijkstra shortest-path distances (open route, no return to depot); beyond 12 it falls back to a nearest-neighbour heuristic and says so in the API response (`routeMethod`).
+- **Dynamic programming / 0/1 knapsack:** chooses reachable repair issues with the highest urgency score while respecting both the repair budget and the single crew's available work hours. Costs are rounded up to ₹1,000 units.
+- **Route ordering:** up to 12 stops are ordered *exactly* with Held-Karp bitmask DP over Dijkstra shortest-path distances (open route, no return to depot); beyond 12 it falls back to a nearest-neighbour heuristic and says so in the API response (`routeMethod`). The planner considers a bounded single-crew hour capacity but still does not price travel distance into repair cost.
 - PostgreSQL stores users, crews, graph nodes/edges and planning history. MongoDB stores flexible citizen issue reports.
-- Responsive HTML/CSS/vanilla JavaScript frontend, API validation, authentication rate limiting, security headers and algorithm unit tests.
+- Responsive HTML/CSS/vanilla JavaScript frontend with server-backed report pagination, same-origin mutation checks, short versioned sessions, structured audit events and algorithm/API integration tests.
 
 ## Key user flows
 
@@ -83,13 +83,20 @@ The `.env.example` uses a convenience account for local evaluation:
 
 ## Tests
 
-The algorithm tests do not require either database to be running. Besides example-based tests there are seeded randomized property tests: Dijkstra vs Floyd-Warshall, knapsack DP vs brute-force subsets, and Held-Karp vs brute-force permutations.
+The fast algorithm suite runs without databases and includes randomized property checks: Dijkstra vs Floyd–Warshall, knapsack DP vs brute-force subsets, and Held–Karp vs brute-force permutations. Run it with:
 
 ```bash
 npm test
 ```
 
-They cover Dijkstra's shortest path, closed roads, unreachable nodes, DP budget selection, age bonus and multi-stop route legs. End-to-end tests against PostgreSQL and MongoDB have not been included in this starter; run the app and test the API flows locally before presenting it as production-ready.
+The integration suite exercises the actual Express API against PostgreSQL and MongoDB: registration, duplicate email handling, login/session identity, pagination, persisted report creation, CSRF checks, role guards, road closures, repair planning and history, plus token-version revocation. Run it with both databases available and environment variables configured:
+
+```bash
+npm run db:seed
+npm run test:integration
+```
+
+GitHub Actions provisions disposable PostgreSQL and MongoDB service containers on every push and pull request, seeds them, and runs both suites. These tests improve regression coverage; they are not a security audit or proof that the hosted service is production-ready.
 
 ## Main API routes
 
@@ -139,7 +146,8 @@ civicfix/
 ## Security and limitations
 
 - Passwords are stored as bcrypt hashes, never plaintext.
-- JWT is stored in an HttpOnly, SameSite=Strict cookie; it is not exposed to browser JavaScript. HTTPS is required for production cookies.
+- JWT is stored in an HttpOnly, SameSite=Strict cookie with a 30-minute expiry. The server checks the current database role and `token_version` on each authenticated request so a role change or version bump invalidates old tokens. There is no refresh-token flow; users sign in again after expiry.
+- State-changing API calls require a same-origin custom header and reject mismatched `Origin` hosts. This is defense in depth for this single-origin app; reassess it if the frontend and API split across origins or authentication changes.
 - This is a learning project, not a security-audited production service. Before public deployment, add HTTPS and managed secret storage, CSRF defence aligned with the deployment topology, account recovery, stronger audit logging, DB backups, admin provisioning workflow, monitoring and end-to-end tests. Review rate limiting for deployment behind a proxy.
 - Reports are readable publicly in this demo. Never include private personal data in report text. A real deployment should define moderation, privacy and data-retention policies.
 - The admin demo password is intentionally convenient for local development only.
@@ -154,19 +162,18 @@ civicfix/
 
 **Held-Karp (route order):** `dp[mask][last]` = shortest distance that visits the set `mask` of stops and ends at `last`. Transitions add one unvisited stop; the answer is the best `dp[full][last]`. Time `O(2^k * k^2)`, memory `O(2^k * k)`, so it is exact but only practical for small `k` (capped at 12 here). Pairwise distances come from `k + 1` Dijkstra runs, not one per pair. Above the cap a nearest-neighbour heuristic is used and reported as such.
 
-**Honest limits:** knapsack picks repairs by urgency only and ignores travel cost and crew hours (`estimatedHours` is collected but not yet a constraint); one crew, one depot, undirected roads.
+**Honest limits:** knapsack picks repairs by urgency only; route distance is reported but not priced into the objective, crew specialty matching is not enforced, and the single-crew hour limit is a simplified input rather than a calendar/scheduling model. The graph is undirected and uses one starting depot.
 
 ## Roadmap / known gaps
 
 - Add crew-hours as a second knapsack constraint (2-D DP) and match crew specialty to issue category.
-- JWT role is embedded for 8h, so a demoted admin keeps access until expiry; add a token version or short-lived tokens + refresh.
-- No end-to-end API tests against real databases yet (algorithms are covered by unit and property tests).
-- Reports have no pagination beyond a fixed 100-item cap.
+- Sessions expire after 30 minutes; there is no refresh-token flow or account-recovery email delivery.
+- Report listing uses bounded page-based pagination (default 20, max 50 per response); very deep pages may become slower as the dataset grows.
 
 ## Resume bullet (use only after you run and validate it yourself)
 
 **CivicFix — Civic Issue Reporting & Repair Planner** | Node.js, Express, PostgreSQL, MongoDB, HTML, CSS, JavaScript
 
-- Built a civic-issue reporting platform with role-based APIs and dual-database persistence for citizen reports, road-network data, crews and repair-plan history.
-- Implemented Dijkstra shortest paths over a weighted road graph with closed-road filtering and 0/1 knapsack DP to prioritise repairs under a fixed budget.
-- Added automated algorithm tests for route correctness, unreachable nodes and budget constraints.
+- Built a civic-issue reporting app with citizen/admin role checks, MongoDB report persistence, PostgreSQL graph/planning data, and paginated report browsing.
+- Implemented Dijkstra shortest paths, 2-constraint 0/1 knapsack selection (repair budget + crew hours), and Held–Karp route ordering for small repair sets.
+- Added unit/property tests plus GitHub Actions integration tests against real PostgreSQL and MongoDB service containers.

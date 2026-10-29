@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { buildGraph, dijkstra } = require('../src/services/graph');
-const { selectRepairsDP, scoreIssue } = require('../src/services/optimizer');
+const { selectRepairsDP, selectRepairsWithHoursDP, scoreIssue } = require('../src/services/optimizer');
 const { planCrewRoute } = require('../src/services/routePlanner');
 
 test('Dijkstra picks the lowest-distance route, not the fewest edges', () => {
@@ -60,4 +60,18 @@ test('route planner uses shortest-path legs and visits reachable selected report
   assert.deepEqual(plan.routeNodeIds, ['A','B','C']);
   assert.equal(plan.totalDistanceKm, 3);
   assert.equal(plan.unrouteableReports.length, 0);
+});
+
+test('2D knapsack DP respects both repair budget and crew working hours', () => {
+  const now = new Date('2026-10-28T00:00:00Z');
+  const issues = [
+    { _id:'long-critical', estimatedCost:5000, estimatedHours:5, severity:5, createdAt:now },
+    { _id:'medium-short', estimatedCost:6000, estimatedHours:3, severity:4, createdAt:now },
+    { _id:'small-short', estimatedCost:5000, estimatedHours:2, severity:3, createdAt:now }
+  ];
+  const plan = selectRepairsWithHoursDP(issues, 11000, 5, now);
+  assert.equal(plan.totalCost, 11000);
+  assert.equal(plan.totalHours, 5);
+  assert.equal(plan.hoursRemaining, 0);
+  assert.deepEqual(plan.selected.map((item) => item._id), ['medium-short', 'small-short']);
 });
