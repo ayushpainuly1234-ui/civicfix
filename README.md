@@ -16,8 +16,8 @@ CivicFix is a portfolio-grade full-stack application for reporting local infrast
 - Report roads, streetlights, waste, water leaks and accessibility issues with location, severity, repair cost and work-hour estimates.
 - Admin dashboard to update report statuses and mark road segments as open or closed.
 - **Graph / Dijkstra:** models the road network as an adjacency list and uses a binary min-heap priority queue to find shortest paths while skipping closed roads.
-- **Dynamic programming / 0/1 knapsack:** chooses a set of reachable repair issues with the highest urgency score without exceeding a repair budget. Cost is rounded up to ₹1,000 units to bound the DP array size.
-- **Route ordering:** up to 12 stops are ordered *exactly* with Held-Karp bitmask DP over Dijkstra shortest-path distances (open route, no return to depot); beyond 12 it falls back to a nearest-neighbour heuristic and says so in the API response (`routeMethod`).
+- **Dynamic programming / 0/1 knapsack:** chooses reachable repair issues with the highest urgency score while respecting both the repair budget and the single crew's available work hours. Costs are rounded up to ₹1,000 units.
+- **Route ordering:** up to 12 stops are ordered *exactly* with Held-Karp bitmask DP over Dijkstra shortest-path distances (open route, no return to depot); beyond 12 it falls back to a nearest-neighbour heuristic and says so in the API response (`routeMethod`). The planner considers a bounded single-crew hour capacity but still does not price travel distance into repair cost.
 - PostgreSQL stores users, crews, graph nodes/edges and planning history. MongoDB stores flexible citizen issue reports.
 - Responsive HTML/CSS/vanilla JavaScript frontend with server-backed report pagination, same-origin mutation checks, short versioned sessions, structured audit events and algorithm/API integration tests.
 
@@ -162,7 +162,7 @@ civicfix/
 
 **Held-Karp (route order):** `dp[mask][last]` = shortest distance that visits the set `mask` of stops and ends at `last`. Transitions add one unvisited stop; the answer is the best `dp[full][last]`. Time `O(2^k * k^2)`, memory `O(2^k * k)`, so it is exact but only practical for small `k` (capped at 12 here). Pairwise distances come from `k + 1` Dijkstra runs, not one per pair. Above the cap a nearest-neighbour heuristic is used and reported as such.
 
-**Honest limits:** knapsack picks repairs by urgency only and ignores travel cost and crew hours (`estimatedHours` is collected but not yet a constraint); one crew, one depot, undirected roads.
+**Honest limits:** knapsack picks repairs by urgency only; route distance is reported but not priced into the objective, crew specialty matching is not enforced, and the single-crew hour limit is a simplified input rather than a calendar/scheduling model. The graph is undirected and uses one starting depot.
 
 ## Roadmap / known gaps
 
@@ -175,5 +175,5 @@ civicfix/
 **CivicFix — Civic Issue Reporting & Repair Planner** | Node.js, Express, PostgreSQL, MongoDB, HTML, CSS, JavaScript
 
 - Built a civic-issue reporting app with citizen/admin role checks, MongoDB report persistence, PostgreSQL graph/planning data, and paginated report browsing.
-- Implemented Dijkstra shortest paths, budget-constrained 0/1 knapsack selection, and Held–Karp route ordering for small repair sets.
+- Implemented Dijkstra shortest paths, 2-constraint 0/1 knapsack selection (repair budget + crew hours), and Held–Karp route ordering for small repair sets.
 - Added unit/property tests plus GitHub Actions integration tests against real PostgreSQL and MongoDB service containers.
