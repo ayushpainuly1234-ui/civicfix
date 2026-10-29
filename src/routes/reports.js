@@ -54,7 +54,7 @@ router.post('/', requireAuth, async (req, res, next) => {
     if (!categories.has(category)) return res.status(400).json({ error: 'Choose a supported issue category.' });
     if (!Number.isInteger(severity) || severity < 1 || severity > 5) return res.status(400).json({ error: 'Severity must be 1–5.' });
     if (!Number.isInteger(estimatedCost) || estimatedCost < 1000 || estimatedCost > 500000) return res.status(400).json({ error: 'Estimated cost must be ₹1,000–₹500,000.' });
-    if (!Number.isFinite(estimatedHours) || estimatedHours < 1 || estimatedHours > 500) return res.status(400).json({ error: 'Estimated hours must be 1–500.' });
+    if (!Number.isInteger(estimatedHours) || estimatedHours < 1 || estimatedHours > 500) return res.status(400).json({ error: 'Estimated hours must be 1–500.' });
     const node = await query('SELECT id,name FROM graph_nodes WHERE id=$1', [nodeId]);
     if (!node.rows.length) return res.status(400).json({ error: 'Choose a location from the list.' });
     const report = { title, description, category, nodeId, locationName: node.rows[0].name, severity, estimatedCost, estimatedHours, status: 'Open', createdBy: Number(req.user.sub), createdAt: new Date(), updatedAt: new Date() };
