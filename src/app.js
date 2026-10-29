@@ -47,7 +47,7 @@ app.use('/api/crews', crewsRoutes);
 app.use('/api/planning', planningRoutes);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'civicfix-api' }));
 app.use('/api', (_req, res) => res.status(404).json({ error: 'API route not found.' }));
-app.use(express.static(path.join(__dirname, '..', 'public'), { etag: true, maxAge: '1h' }));
+app.use(express.static(path.join(__dirname, '..', 'public'), { etag: true, maxAge: nodeEnv === 'production' ? 0 : '1h' }));
 app.get('*', (_req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 
 app.use((err, _req, res, _next) => {
