@@ -133,7 +133,7 @@ test('CivicFix API end-to-end against PostgreSQL and MongoDB', { skip: !enabled 
       });
       assert.equal(forbiddenStatus.response.status, 403);
       const forbiddenPlanner = await call('/api/planning/optimize', {
-        method: 'POST', cookie: citizenCookie, body: { budget: 60000, startNodeId: 'depot' }
+        method: 'POST', cookie: citizenCookie, body: { budget: 60000, maxCrewHours: 40, startNodeId: 'depot' }
       });
       assert.equal(forbiddenPlanner.response.status, 403);
     });
@@ -175,6 +175,7 @@ test('CivicFix API end-to-end against PostgreSQL and MongoDB', { skip: !enabled 
       assert.equal(plan.response.status, 200, JSON.stringify(plan.body));
       assert.ok(plan.body.planId);
       assert.ok(plan.body.totalCost <= plan.body.budget);
+      assert.ok(plan.body.totalHours <= plan.body.maxCrewHours);
       assert.ok(Array.isArray(plan.body.selectedReports));
       assert.ok(['held-karp-exact', 'nearest-neighbour-heuristic'].includes(plan.body.routeMethod));
       const history = await call('/api/planning/history', { cookie: adminCookie });
